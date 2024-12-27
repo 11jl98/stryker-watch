@@ -2,185 +2,87 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Interface para Mutante
-interface Mutant {
-  mutatorName: string;
-  replacement: string;
-  status: string;
-  location: {
-    start: { line: number; column: number };
-    end: { line: number; column: number };
-  };
-  filePath?: string;
-}
-
-// Lista global de mutantes sobreviventes
-let survivingMutants: Mutant[] = [];
-
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Stryker Mutation Monitor está ativo.');
+  const disposable = vscode.commands.registerCommand('strykerHelper.suggestFixes', async () => {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
 
-  // Monitorar o arquivo de relatório do Stryker
-  const watcher = vscode.workspace.createFileSystemWatcher('**/reports/mutation/stryker-incremental.json');
-  watcher.onDidChange((uri) => {
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage('Nenhuma pasta de workspace aberta no VSCode.');
+      return;
+    }
+
+    // Caminho do JSON
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    const defaultJsonPath = path.join(rootPath, 'reports/mutation/stryker-incremental.json');
+
+    if (!fs.existsSync(defaultJsonPath)) {
+      vscode.window.showErrorMessage(`Arquivo JSON não encontrado em: ${defaultJsonPath}`);
+      return;
+    }
+
     try {
-      processStrykerReport(uri);
-    } catch (error) {
-      console.log('Erro no callback onDidChange:', error);
-    }
-  });
-  
-  watcher.onDidCreate((uri) => {
-    try {
-      processStrykerReport(uri);
-    } catch (error) {
-      console.log('Erro no callback onDidCreate:', error);
-    }
-  });
+      const data = fs.readFileSync(defaultJsonPath, 'utf-8');
+      const results = JSON.parse(data);
 
-  context.subscriptions.push(watcher);
-  console.log('FileSystemWatcher registrado.');
-
-  // Registrar comando para sugerir melhorias
-  const suggestFixCommand = vscode.commands.registerCommand('mutation.suggestFix', async () => {
-    console.log('Comando mutation.suggestFix executado.');
-    
-    if (!vscode.window.activeTextEditor) {
-      vscode.window.showErrorMessage('Nenhum arquivo aberto no editor.');
-      return;
-    }
-
-    if (survivingMutants.length === 0) {
-      vscode.window.showInformationMessage('Nenhum mutante sobrevivente encontrado.');
-      return;
-    }
-
-    const editor = vscode.window.activeTextEditor;
-    const line = editor.selection.active.line;
-    console.log('Linha atual no editor:', line);
-
-    const relevantMutant = survivingMutants.find((mutant: Mutant) =>
-      mutant.location.start.line - 1 <= line && mutant.location.end.line - 1 >= line
-    );
-    console.log('Mutação relevante encontrada:', relevantMutant);
-
-    if (!relevantMutant) {
-      vscode.window.showInformationMessage('Nenhuma mutação associada encontrada nesta linha.');
-      return;
-    }
-
-    const quickPickOptions = [
-      { label: 'Aplicar Correção', description: `Aplicar mutação "${relevantMutant.mutatorName}"` },
-      { label: 'Ignorar Mutação', description: 'Não aplicar a correção' }
-    ];
-
-    const selection = await vscode.window.showQuickPick(quickPickOptions, { placeHolder: 'Escolha uma ação para a mutação' });
-    console.log('Seleção do usuário:', selection);
-
-    if (selection && selection.label === 'Aplicar Correção') {
-      suggestFix(relevantMutant, editor);
-    } else {
-      vscode.window.showInformationMessage('Mutação ignorada.');
-    }
-  });
-
-  context.subscriptions.push(suggestFixCommand);
-  console.log('Comando suggestFix registrado.');
-}
-
-async function processStrykerReport(uri?: vscode.Uri) {
-  const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '';
-  const reportPath = uri?.fsPath || path.join(workspaceFolder, 'reports/mutation/stryker-incremental.json');
-
-  console.log('Processando relatório de mutação no caminho:', reportPath);
-
-  if (!fs.existsSync(reportPath)) {
-    vscode.window.showErrorMessage('Relatório de mutação não encontrado.');
-    return;
-  }
-
-  try {
-    const content = fs.readFileSync(reportPath, 'utf8');
-    console.log('Conteúdo do relatório:', content); // Verificar o conteúdo do relatório
-
-    const report = JSON.parse(content);
-    console.log('Relatório processado:', report); // Verificar a estrutura do JSON
-
-    // Extrair mutantes sobreviventes
-    survivingMutants = [];
-    for (const file in report.files) {
-      if (report.files.hasOwnProperty(file)) {
-        console.log(`Processando arquivo: ${file}`); // Log para cada arquivo
-
-        const mutants = report.files[file].mutants.filter((mutant: Mutant) => mutant.status.toLowerCase() === 'survived');
-        console.log(`Mutantes sobreviventes em ${file}:`, mutants); // Verificar mutantes filtrados
-
-        survivingMutants.push(...mutants.map((mutant: Mutant) => ({ ...mutant, filePath: file })));
+      if (!results.files) {
+        vscode.window.showErrorMessage('O arquivo JSON não contém a propriedade "files". Verifique a estrutura.');
+        return;
       }
-    }
 
-    if (survivingMutants.length > 0) {
-      vscode.window.showInformationMessage(`${survivingMutants.length} mutantes sobreviventes identificados.`);
-      console.log('Mutantes sobreviventes:', survivingMutants); // Verificar mutantes sobreviventes
-      highlightMutations();
-    } else {
-      vscode.window.showInformationMessage('Nenhum mutante sobrevivente encontrado.');
-    }
-  } catch (error) {
-    vscode.window.showErrorMessage('Erro ao processar o relatório do Stryker: ' + error);
-    console.error('Erro ao processar o relatório:', error);
-  }
-}
+      const diagnostics = vscode.languages.createDiagnosticCollection('strykerMutations');
+      diagnostics.clear();
 
-function highlightMutations() {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    return;
-  }
+      const survivingMutants: any[] = [];
 
-  const decorationType = vscode.window.createTextEditorDecorationType({
-    backgroundColor: 'rgba(255,0,0,0.3)',
-    border: '1px solid red'
-  });
+      // Processar mutantes sobreviventes
+      Object.entries(results.files).forEach(([fileName, fileData]: [string, any]) => {
+        if (fileData.mutants && Array.isArray(fileData.mutants)) {
+          const fileSurvivingMutants = fileData.mutants.filter(
+            (mutant: any) => mutant.status === 'Survived'
+          );
 
-  const decorations: vscode.DecorationOptions[] = [];
+          fileSurvivingMutants.forEach((mutant: any) => {
+            survivingMutants.push({
+              fileName,
+              source: fileData.source,
+              ...mutant,
+            });
+          });
+        }
+      });
 
-  survivingMutants.forEach(mutant => {
-    if (mutant.filePath && path.basename(mutant.filePath) === 'container.ts') {
-      const range = new vscode.Range(
-        new vscode.Position(mutant.location.start.line - 1, mutant.location.start.column),
-        new vscode.Position(mutant.location.end.line - 1, mutant.location.end.column)
-      );
+      // Gerar diagnósticos para mutantes sobreviventes
+      survivingMutants.forEach(mutant => {
+        const { fileName, location, mutatorName, replacement } = mutant;
+        const absoluteFilePath = path.resolve(rootPath, fileName);
 
-      decorations.push({ range });
-    }
-  });
+        if (!fs.existsSync(absoluteFilePath)) {
+          vscode.window.showErrorMessage(`Arquivo não encontrado: ${absoluteFilePath}`);
+          return;
+        }
 
-  editor.setDecorations(decorationType, decorations);
-}
+        // Criar diagnóstico
+        const start = new vscode.Position(location.start.line - 1, location.start.column);
+        const end = new vscode.Position(location.end.line - 1, location.end.column);
+        const range = new vscode.Range(start, end);
 
-function suggestFix(mutant: Mutant, editor: vscode.TextEditor) {
-  const { mutatorName, replacement } = mutant;
-  const range = new vscode.Range(
-    mutant.location.start.line - 1,
-    mutant.location.start.column,
-    mutant.location.end.line - 1,
-    mutant.location.end.column
-  );
+        const diagnostic = new vscode.Diagnostic(
+          range,
+          `Mutação sobreviveu: "${mutatorName}". Sugestão: Adicione testes para cobrir esta mutação ou revise a lógica. Código mutado: ${replacement}`,
+          vscode.DiagnosticSeverity.Warning
+        );
 
-  editor.edit((editBuilder) => {
-    editBuilder.replace(range, replacement);
-  }).then(success => {
-    if (success) {
-      vscode.window.showInformationMessage(`Mutação "${mutatorName}" corrigida com sucesso!`);
-      console.log(`Mutação "${mutatorName}" corrigida com sucesso!`);
-    } else {
-      vscode.window.showErrorMessage('Erro ao aplicar a correção.');
-      console.log('Erro ao aplicar a correção.');
+        diagnostic.source = 'Stryker';
+        diagnostics.set(vscode.Uri.file(absoluteFilePath), [diagnostic]);
+      });
+
+      vscode.window.showInformationMessage('Diagnósticos criados para mutações sobreviventes.');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Erro ao processar o arquivo JSON: ${error}`);
     }
   });
+
+  context.subscriptions.push(disposable);
 }
 
-export function deactivate() {
-  console.log('Stryker Mutation Monitor desativado.');
-}
+export function deactivate() {}

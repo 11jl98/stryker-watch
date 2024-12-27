@@ -13,8 +13,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "mutation.suggestFix",
-        "title": "Sugerir Correção de Mutação"
+       "command": "strykerHelper.suggestFixes",
+        "title": "Sugerir Fixes com Stryker"
       }
     ],
     "activationEvents": [
