@@ -13,12 +13,13 @@
   "contributes": {
     "commands": [
       {
-       "command": "strykerHelper.suggestFixes",
-        "title": "Sugerir Fixes com Stryker"
+        "command": "strykerHelper.toggleWatcher",
+        "title": "Ativar/Desativar Stryker Watcher",
+        "category": "Stryker Helper"
       }
     ],
     "activationEvents": [
-      "*"
+      "onCommand:strykerHelper.toggleWatcher"
     ]
   },
   "scripts": {
