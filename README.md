@@ -1,71 +1,73 @@
-# testing-aux README
+# Stryker watcher Extension for VSCode
 
-This is the README for your extension "testing-aux". After writing up a brief description, we recommend including the following sections.
+Esta extensão para VSCode monitora os relatórios de mutação gerados pelo Stryker e destaca as mutações sobreviventes diretamente no código-fonte. Além disso, fornece sugestões para lidar com mutações sobreviventes, ajudando a melhorar a cobertura dos testes e a robustez do código.
 
-## Features
+## Funcionalidades
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- Observação em tempo real de alterações no arquivo de relatório de mutação (`stryker-incremental.json`).
+- Destaque de mutações sobreviventes diretamente no código.
+- Diagnósticos e mensagens para orientar melhorias nos testes e código.
+- Controle ativar/desativar observação via comando.
 
 ---
 
-## Following extension guidelines
+## Como Usar
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+- Ele consta com um comando principal, pressionando o ctrl+ shift + P e digitando "Ativar/Desativar Stryker Watcher", com ele você será notificado que a o observador vai estar ativo e a partir desse momento qualquer alteração que foi feita no stryker-incremental.json, será capturada e destacada no código-fonte.
+- Caso seja atingido o score desejado, basta encontrar novamente o comando que a extensão será desabilitada e os warning irão sumir
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+### Requisitos
 
-## Working with Markdown
+- **Node.js** instalado na máquina.
+- **VSCode** instalado.
+- Relatórios de mutação gerados pelo [Stryker Mutator](https://stryker-mutator.io/).
+- Caminho do arquivo "reports/mutation/stryker-incremental.json"
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+### Configuração Inicial (Desenvolvimento)
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+1. **Instale a Extensão no VSCode**:
 
-## For more information
+   - Clone este repositório:
+     ```bash
+     git clone <URL_DO_REPOSITORIO>
+     ```
+   - Abra a pasta do projeto no VSCode.
+     prcure pela extensão [Extension Test Runner](https://marketplace.visualstudio.com/items?itemName=ms-vscode.extension-test-runner), e a inicie
+   - Pressione `F5` para iniciar a extensão em um ambiente de depuração (VSCode abrirá uma nova janela para teste, que a partir dela poderá ser aberto qualquer projeto para que interaja com a extensão em deburação).
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+2. **Geração de Relatórios de Mutação**:
 
-**Enjoy!**
+   - Configure o Stryker em seu projeto:
+     ```bash
+     npx stryker init ou npm run test:mutation
+     ```
+   - Certifique-se de que o arquivo de relatório esteja sendo gerado no caminho padrão: `reports/mutation/stryker-incremental.json`.
+
+3. **Inicie o Observador**:
+
+   - Use o comando no Pallet de Comandos do VSCode (Ctrl+Shift+P ou Cmd+Shift+P):
+
+     ```
+     Ativar/Desativar Stryker Watcher
+     ```
+
+   - Certifique-se de que o arquivo de relatório está presente no local esperado.
+
+---
+
+### Estrutura do Projeto
+
+- `src/`: Contém o código-fonte da extensão.
+- `package.json`: Configurações e dependências da extensão.
+- `tsconfig.json`: Configurações do TypeScript.
+
+### Dependências
+
+Certifique-se de instalar as dependências antes de iniciar o desenvolvimento:
+
+```bash
+npm install
+npm run compile
+```
+
+#### by Joao Luiz Pereira (joao.pereira@compasso.com.br)
