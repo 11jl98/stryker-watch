@@ -6,6 +6,7 @@ let fileWatcher: vscode.FileSystemWatcher | undefined;
 let isWatcherActive = false;
 let statusBarItem: vscode.StatusBarItem;
 let diagnosticCollection: vscode.DiagnosticCollection;
+
 export function activate(context: vscode.ExtensionContext) {
   statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
@@ -182,21 +183,21 @@ function createDiagnostic(
     const fileContent = fs.readFileSync(absoluteFilePath, "utf-8");
     const lines = fileContent.split(/\r?\n/);
     const extractedLines = lines.slice(
-      location.start.line - 2,
+      location.start.line - 1,
       location.end.line
     );
     if (extractedLines.length > 0) {
       if (extractedLines.length === 1) {
         originalCode = extractedLines[0].substring(
-          location.start.column,
+          1,
           location.end.column
-        );
+        ).trim();
       } else {
-        extractedLines[0] = extractedLines[0].substring(location.start.column);
+        extractedLines[0] = extractedLines[0].substring(1);
         extractedLines[extractedLines.length - 1] = extractedLines[
           extractedLines.length - 1
         ].substring(0, location.end.column);
-        originalCode = extractedLines.join("\n");
+        originalCode = extractedLines.join("\n").trim();
       }
     }
   } catch (error) {
@@ -204,15 +205,21 @@ function createDiagnostic(
   }
 
   const prompt = `
-    A mutação \"${mutatorName}\" sobreviveu no arquivo ${fileName}, linha ${
-    location.start.line
-  }.
-    Código original: ${originalCode.trim()}
-    Código mutado: ${replacement.trim()}
+    O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${location.start.line}.
+  
+    **Código Original:**
+    ${originalCode.trim()}
+  
+    **Código Mutado pelo Stryker:**
+    ${replacement.trim()}
 
-    Sugestão:
-    - Crie um teste para validar a lógica original e detectar essa mutação.
-    - Garanta cobertura para este trecho de código.
+    **Instruções:**
+    1. Sugira um novo caso de teste que cubra essa mutação.
+    2. Proponha uma melhoria no código original para evitar que a mutação sobreviva.
+    3. Explique por que essa mutação sobreviveu. Indique se isso é esperado (um falso positivo) ou se há um problema no código/testes.
+
+    **Objetivo:**
+    Garanta que o código seja mais robusto e cubra adequadamente a mutação detectada.
   `.trim();
 
   const diagnostic = new vscode.Diagnostic(
