@@ -58,7 +58,30 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  context.subscriptions.push(toggleWatcherCommand, statusBarItem);
+  const runMutationTestsCommand = vscode.commands.registerCommand(
+    "strykerHelper.runMutationTestsForFile",
+    async () => {
+      const activeEditor = vscode.window.activeTextEditor;
+
+      if (!activeEditor) {
+        vscode.window.showErrorMessage(
+          "Nenhum arquivo está aberto no editor. Abra um arquivo para rodar os testes de mutação."
+        );
+        return;
+      }
+
+      const filePath = activeEditor.document.uri.fsPath;
+      const relativeFilePath = vscode.workspace.asRelativePath(filePath);
+
+      runMutationTestsForFile(relativeFilePath);
+    }
+  );
+
+  context.subscriptions.push(
+    runMutationTestsCommand,
+    toggleWatcherCommand,
+    statusBarItem
+  );
 }
 
 function activateWatcher(jsonPath: string, rootPath: string) {
@@ -188,10 +211,9 @@ function createDiagnostic(
     );
     if (extractedLines.length > 0) {
       if (extractedLines.length === 1) {
-        originalCode = extractedLines[0].substring(
-          1,
-          location.end.column
-        ).trim();
+        originalCode = extractedLines[0]
+          .substring(1, location.end.column)
+          .trim();
       } else {
         extractedLines[0] = extractedLines[0].substring(1);
         extractedLines[extractedLines.length - 1] = extractedLines[
@@ -205,7 +227,9 @@ function createDiagnostic(
   }
 
   const prompt = `
-    O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${location.start.line}.
+    O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${
+    location.start.line
+  }.
   
     **Código Original:**
     ${originalCode.trim()}
@@ -240,6 +264,40 @@ function updateStatusBar() {
     ? "$(eye) Stryker Watcher: Ativado"
     : "$(eye-closed) Stryker Watcher: Desativado";
   statusBarItem.show();
+}
+
+function runMutationTestsForFile(filePath: string) {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("Nenhuma pasta de workspace aberta.");
+    return;
+  }
+
+  const rootPath = workspaceFolders[0].uri.fsPath;
+  const strykerConfigPath = path.join(rootPath, "stryker.conf.json");
+
+  if (!fs.existsSync(strykerConfigPath)) {
+    vscode.window.showErrorMessage(
+      `Arquivo de configuração do Stryker não encontrado: ${strykerConfigPath}`
+    );
+    return;
+  }
+  if (
+    filePath.endsWith(".unit.spec.ts") ||
+    filePath.endsWith(".unit.spec.js")
+  ) {
+    vscode.window.showErrorMessage(
+      "Não é permitido rodar testes de mutação diretamente em arquivos de testes."
+    );
+    return;
+  }
+
+  const command = `npx stryker run --mutate "${filePath}"`;
+
+  const terminal = vscode.window.createTerminal("Testes de Mutação");
+  terminal.show();
+  terminal.sendText(command, true);
 }
 
 export function deactivate() {

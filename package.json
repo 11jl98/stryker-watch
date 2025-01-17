@@ -16,8 +16,22 @@
         "command": "strykerHelper.toggleWatcher",
         "title": "Ativar/Desativar Stryker Watcher",
         "category": "Stryker Helper"
+      },
+      {
+        "command": "strykerHelper.runMutationTestsForFile",
+        "title": "Stryker run (Arquivo Atual)",
+        "category": "Stryker runner"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "strykerHelper.runMutationTestsForFile",
+          "when": "resourceLangId == javascript || resourceLangId == typescript",
+          "group": "z"
+        }
+      ]
+    },
     "activationEvents": [
       "onCommand:strykerHelper.toggleWatcher"
     ]
