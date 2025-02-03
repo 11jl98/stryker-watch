@@ -207,7 +207,7 @@ function createDiagnostic(
   const prompt = `
     O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${location.start.line}.
   
-    **Código Original:**
+    ***Código Original:***
     ${originalCode.trim()}
   
     **Código Mutado pelo Stryker:**
