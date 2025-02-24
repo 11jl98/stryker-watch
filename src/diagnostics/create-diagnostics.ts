@@ -60,18 +60,20 @@ export function createDiagnostic(
   );
 
   const prompt = `
-    O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${
+  O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${
     location.start.line
   }.
   
-    **Código Original:**
-    ${originalCode.trim()}
+  **Código Original:**
+  ${originalCode.trim()}
   
-    **Código Mutado pelo Stryker:**
-    ${replacement.trim()}
-
-    ${generateTestPrompt(testInfo, testFileName)}
-  `.trim();
+  **Código Mutado pelo Stryker:**
+  ${replacement.trim()}
+  
+  ${generateTestPrompt(testInfo, testFileName)}
+  `
+    .replace(/\n\s*\n/g, "\n")
+    .trim();
 
   const diagnostic = new vscode.Diagnostic(
     range,
