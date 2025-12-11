@@ -2,21 +2,19 @@ import * as vscode from "vscode";
 import { deactivateWatcher } from "./watcher/deactive-watcher";
 import { toggleWatcher } from "./commands/toggle-watcher";
 import { runMutationFile } from "./commands/run-mutation-file";
+import { registerMutationHoverProvider } from "./diagnostics/create-diagnostics";
 
 let fileWatcher: vscode.FileSystemWatcher | undefined;
 let diagnosticCollection: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext) {
+  registerMutationHoverProvider();
   diagnosticCollection =
     vscode.languages.createDiagnosticCollection("strykerMutations");
 
   const toggleWatcherCommand = vscode.commands.registerCommand(
     "strykerHelper.toggleWatcher",
-    () =>
-      toggleWatcher(
-        fileWatcher,
-        diagnosticCollection
-      )
+    () => toggleWatcher(fileWatcher, diagnosticCollection)
   );
 
   const runMutationTestsCommand = vscode.commands.registerCommand(
@@ -24,10 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
     async () => runMutationFile()
   );
 
-  context.subscriptions.push(
-    runMutationTestsCommand,
-    toggleWatcherCommand,
-  );
+  context.subscriptions.push(runMutationTestsCommand, toggleWatcherCommand);
 }
 
 export function deactivate() {

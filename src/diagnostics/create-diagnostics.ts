@@ -4,6 +4,8 @@ import * as path from "path";
 import { processTestsFile } from "../utils/process-tests-file";
 import { generateTestPrompt } from "../utils/generate-test-prompt";
 
+export const mutationHovers = new Map<string, vscode.Hover[]>();
+
 export function createDiagnostic(
   mutant: any,
   testFiles: any,
@@ -59,19 +61,37 @@ export function createDiagnostic(
     coveredBy
   );
 
-  const prompt = `
-    O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${
-    location.start.line
-  }.
-  
-    **Código Original:**
-    ${originalCode.trim()}
-  
-    **Código Mutado pelo Stryker:**
-    ${replacement.trim()}
+  const hoverMarkdown = new vscode.MarkdownString();
+  hoverMarkdown.appendMarkdown(
+    `### 💥 Mutação Sobrevivente: \`${mutatorName}\`\n`
+  );
+  hoverMarkdown.appendMarkdown(
+    `📄 Arquivo: \`${fileName}:${location.start.line}\`\n\n`
+  );
+  hoverMarkdown.appendMarkdown(`**Código Original:**\n`);
+  hoverMarkdown.appendCodeblock(originalCode, "ts");
+  hoverMarkdown.appendMarkdown(`**Código Mutado pelo Stryker:**\n`);
+  hoverMarkdown.appendCodeblock(replacement, "ts");
+  hoverMarkdown.appendMarkdown(
+    `---\n🧪 ${generateTestPrompt(testInfo, testFileName)}`
+  );
 
-    ${generateTestPrompt(testInfo, testFileName)}
-  `.trim();
+  const hover = new vscode.Hover(hoverMarkdown, range);
+  const absPath = path.resolve(
+    vscode.workspace.workspaceFolders![0].uri.fsPath,
+    fileName
+  );
+  const hovers = mutationHovers.get(absPath) ?? [];
+  hovers.push(hover);
+  mutationHovers.set(absPath, hovers);
+
+  const prompt =
+    `O Stryker detectou que a mutação "${mutatorName}" sobreviveu no arquivo "${fileName}", na linha ${
+      location.start.line
+    }.\n\n**Código Original:**\n${originalCode.trim()}\n\n**Código Mutado pelo Stryker:**\n${replacement.trim()}\n\n${generateTestPrompt(
+      testInfo,
+      testFileName
+    )}`.trim();
 
   const diagnostic = new vscode.Diagnostic(
     range,
@@ -80,4 +100,19 @@ export function createDiagnostic(
   );
   diagnostic.source = "Stryker";
   return diagnostic;
+}
+
+export function registerMutationHoverProvider() {
+  vscode.languages.registerHoverProvider(
+    { scheme: "file" },
+    {
+      provideHover(document, position) {
+        const hovers = mutationHovers.get(document.uri.fsPath);
+        if (!hovers) {
+          return;
+        }
+        return hovers.find((h) => h.range?.contains(position));
+      },
+    }
+  );
 }

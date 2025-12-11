@@ -1,17 +1,33 @@
 {
-  "name": "testing-aux",
+  "name": "stryker-watcher",
   "author": {
     "name": "João Luiz Pereira Ferreira",
     "email": "joao.pereir@compasso.com.br"
   },
-  "displayName": "testing-aux",
+  "displayName": "Stryker Watcher",
   "description": "Esta extensão para VSCode monitora os relatórios de mutação gerados pelo Stryker e destaca as mutações sobreviventes diretamente no código-fonte. Além disso, fornece sugestões para lidar com mutações sobreviventes, ajudando a melhorar a cobertura dos testes e a robustez do código.",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "publisher": "joaoluizferreira",
+  "keywords": [
+    "stryker",
+    "mutation",
+    "mutação",
+    "matar mutantes",
+    "frontend",
+    "backend",
+    "BFF",
+    "devtools"
+  ],
   "engines": {
     "vscode": "^1.96.0"
   },
+  "icon": "assets/logo.jpg",
   "categories": [
-    "Other"
+    "Other",
+    "Programming Languages",
+    "Visualization",
+    "AI",
+    "Formatters"
   ],
   "main": "./dist/extension.js",
   "contributes": {
